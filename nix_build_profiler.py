@@ -174,32 +174,36 @@ def print_process_info(
   child_procs = len(info["child_pids"])
   if len(cmdline) > 0:
     cmdline[0] = os.path.basename(cmdline[0]) # full path is in info["exe"]
-    #if cmdline[0] in {"g++", "gcc"}:
-    if cmdline[0] in {"g++", "gcc", "cc1plus", "as"}:
-        # make gcc less verbose
-        cmdline_short = []
-        skip_value = False
-        for arg in cmdline:
-            if skip_value:
-                skip_value = False
-                continue
-            if arg in {"-isystem", "-idirafter", "-D", "-I", "-MF", "-MMD", "-dumpdir", "-dumpbase", "-dumpbase-ext"}:
-                # -isystem is the most frequent
-                skip_value = True
-                continue
-            if arg in {"-quiet", "-MQ", "--64"}:
-                continue
-            if arg[0:2] in {"-D", "-m", "-O", "-W", "-f"}:
-                continue
-            if arg.startswith("-std"):
-                continue
-            if arg.startswith("--param"):
-                continue
-            cmdline_short.append(arg)
-        cmdline = cmdline_short
+    if cmdline[0] in {"g++", "gcc"}:
+    #if cmdline[0] in {"g++", "gcc", "cc1plus", "as"}:
+      # make gcc less verbose
+      cmdline_short = []
+      skip_value = False
+      for arg in cmdline:
+        if skip_value:
+          skip_value = False
+          continue
+        # TODO "-MF", "-MMD", "-MQ",
+        if arg in {"-I", "-D", "-isystem", "-idirafter", "--param", "-dumpdir", "-dumpbase", "-dumpbase-ext"}:
+          # -isystem is the most frequent
+          skip_value = True
+          continue
+        if arg in {"-pthread", "-pipe", "-quiet", "--64"}:
+          continue
+        if arg[0:2] in {"-I", "-D", "-m", "-O", "-W", "-f"}:
+          continue
+        if arg.startswith("-std="):
+          continue
+        #if arg.startswith("--param"): # TODO?
+        #    continue
+        cmdline_short.append(arg)
+    cmdline = cmdline_short
 
-    #process_info[root_pid]["child_pids"] = [] # hide gcc child procs: cc1plus, as, ...
-  log_info = {"child_procs": child_procs, "cmdline": cmdline, "cwd": cwd, "exe": exe}
+    if cmdline[0] in {"g++", "gcc"}:
+      process_info[root_pid]["child_pids"] = [] # hide gcc child procs: cc1plus, as, ...
+  # TODO print cwd only when different from parent process
+  log_info = {"child_procs": child_procs, "cmdline": cmdline, "cwd": cwd}
+  #log_info["exe"] = exe
   #if depth == 0:
   #  log_info["environ"] = environ # spammy
   print(f"{sum_cpu:{cpu_width}.1f} {sum_mem:3.0f} {Float(sum_rss):4.0h} {depth*indent}{name} info={repr(log_info)}", file=file)
