@@ -174,8 +174,8 @@ def print_process_info(
   child_procs = len(info["child_pids"])
   if len(cmdline) > 0:
     cmdline[0] = os.path.basename(cmdline[0]) # full path is in info["exe"]
-    if cmdline[0] in {"g++", "gcc"}:
     #if cmdline[0] in {"g++", "gcc", "cc1plus", "as"}:
+    if cmdline[0] in {"g++", "gcc"}:
       # make gcc less verbose
       cmdline_short = []
       skip_value = False
@@ -197,7 +197,7 @@ def print_process_info(
         #if arg.startswith("--param"): # TODO?
         #    continue
         cmdline_short.append(arg)
-    cmdline = cmdline_short
+      cmdline = cmdline_short
 
     if cmdline[0] in {"g++", "gcc"}:
       process_info[root_pid]["child_pids"] = [] # hide gcc child procs: cc1plus, as, ...
