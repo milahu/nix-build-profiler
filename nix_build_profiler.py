@@ -183,26 +183,32 @@ def print_process_info(
         if skip_value:
           skip_value = False
           continue
-        # TODO "-MF", "-MMD", "-MQ",
-        if arg in {"-I", "-D", "-isystem", "-idirafter", "--param", "-dumpdir", "-dumpbase", "-dumpbase-ext"}:
+        # TODO "-MQ",
+        if arg in {"-I", "-B", "-D", "-U", "-isystem", "-idirafter", "--param", "-MF", "-dumpdir", "-dumpbase", "-dumpbase-ext"}:
           # -isystem is the most frequent
           skip_value = True
           continue
-        if arg in {"-pthread", "-pipe", "-quiet", "--64"}:
+        if arg in {"-pthread", "-pipe", "-MMD", "-quiet", "--64"}:
           continue
-        if arg[0:2] in {"-I", "-D", "-m", "-O", "-W", "-f"}:
+        if arg[0:2] in {"-I", "-B", "-D", "-U", "-m", "-O", "-W", "-f", "-g"}:
           continue
         if arg.startswith("-std="):
           continue
-        #if arg.startswith("--param"): # TODO?
-        #    continue
+        if arg.startswith("--param="): # ex: --param=ssp-buffer-size=4
+            continue
         cmdline_short.append(arg)
       cmdline = cmdline_short
 
     if cmdline[0] in {"g++", "gcc"}:
       process_info[root_pid]["child_pids"] = [] # hide gcc child procs: cc1plus, as, ...
   # TODO print cwd only when different from parent process
-  log_info = {"child_procs": child_procs, "cmdline": cmdline, "cwd": cwd}
+  log_info = {"child_procs": child_procs, "cmdline": cmdline}
+  if depth == 0:
+    log_info["cwd"] = cwd
+  else:
+    parent_cwd = process_info[info["ppid"]]["cwd"]
+    if cwd != parent_cwd:
+      log_info["cwd"] = cwd
   #log_info["exe"] = exe
   #if depth == 0:
   #  log_info["environ"] = environ # spammy
