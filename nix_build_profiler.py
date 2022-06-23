@@ -214,7 +214,7 @@ def print_process_info(
   #  log_info["environ"] = environ # spammy
   if len(cmdline) > 0 and cmdline[0] in {"g++", "gcc"}:
     name = shlex.join(cmdline) # TODO print cmdline for all commands?
-    del info["cmdline"]
+    del log_info["cmdline"]
     print(f"{sum_cpu:{cpu_width}.1f} {sum_mem:3.0f} {Float(sum_rss):4.0h} {depth*indent}{name} info={repr(log_info)}", file=file)
   else:
     print(f"{sum_cpu:{cpu_width}.1f} {sum_mem:3.0f} {Float(sum_rss):4.0h} {depth*indent}{name} info={repr(log_info)}", file=file)
