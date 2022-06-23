@@ -175,7 +175,7 @@ def print_process_info(
   if len(cmdline) > 0:
     cmdline[0] = os.path.basename(cmdline[0]) # full path is in info["exe"]
     #if cmdline[0] in {"g++", "gcc", "cc1plus", "as"}:
-    if cmdline[0] in {"g++", "gcc"}:
+    if cmdline[0] in {"g++", "gcc"}: # TODO fix other verbose commands
       # make gcc less verbose
       cmdline_short = []
       skip_value = False
@@ -212,7 +212,12 @@ def print_process_info(
   #log_info["exe"] = exe
   #if depth == 0:
   #  log_info["environ"] = environ # spammy
-  print(f"{sum_cpu:{cpu_width}.1f} {sum_mem:3.0f} {Float(sum_rss):4.0h} {depth*indent}{name} info={repr(log_info)}", file=file)
+  if len(cmdline) > 0 and cmdline[0] in {"g++", "gcc"}:
+    name = shlex.join(cmdline) # TODO print cmdline for all commands?
+    del info["cmdline"]
+    print(f"{sum_cpu:{cpu_width}.1f} {sum_mem:3.0f} {Float(sum_rss):4.0h} {depth*indent}{name} info={repr(log_info)}", file=file)
+  else:
+    print(f"{sum_cpu:{cpu_width}.1f} {sum_mem:3.0f} {Float(sum_rss):4.0h} {depth*indent}{name} info={repr(log_info)}", file=file)
   for child_pid in process_info[root_pid]["child_pids"]:
     print_process_info(
       process_info,
