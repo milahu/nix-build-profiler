@@ -216,21 +216,12 @@ def main():
 
   root_process = find_root_process(config_root_process_name)
 
-  max_load = int(os.environ.get("NIX_BUILD_CORES", "0"))
-  min_load = 0.9 * max_load # 90% of 32 cores = 28.8
+  max_load = os.enrivon.get("NIX_BUILD_CORES", 0)
   total_cores = os.cpu_count()
   check_load = 0 < max_load and max_load < total_cores
-  max_load_tolerance = 0.20 # 20%
-  min_load_tolerance = 0
-  tolerant_max_load = max_load * (1 + max_load_tolerance)
-  tolerant_min_load = min_load * (1 - min_load_tolerance)
-
-  check_load = False # debug. TODO expose option
-
-  # mostly useless. should be "0 free tokens" for 99% of the build time.
-  # at the end of the build, when tokens are missing, make prints a warning.
-  # ninja should do the same (TODO implement?)
-  print_jobserver_stats = True
+  #max_load_tolerance = 0.25 # 25%
+  max_load_tolerance = 0
+  tolerant_max_load = max_load * (1 - max_load_tolerance)
 
   try:
 
@@ -239,6 +230,11 @@ def main():
       process_info = get_process_info(root_process)
 
       cumulate_process_info(process_info, root_process.pid)
+
+      if check_load:
+        if process_info[root_process.pid]["sum_cpu"] < tolerant_max_load:
+          # load is not exceeded -> dont print
+          continue
 
       string_file = io.StringIO()
       print_process_info(process_info, root_process.pid, file=string_file)
