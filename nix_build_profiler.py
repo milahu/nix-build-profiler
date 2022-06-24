@@ -188,7 +188,7 @@ def print_process_info(
           # -isystem is the most frequent
           skip_value = True
           continue
-        if arg in {"-pthread", "-pipe", "-MMD", "-quiet", "--64"}:
+        if arg in {"-pthread", "-pipe", "-MMD", "-MD", "-MT", "-quiet", "--64"}:
           continue
         if arg[0:2] in {"-I", "-B", "-D", "-U", "-m", "-O", "-W", "-f", "-g"}:
           continue
@@ -214,8 +214,11 @@ def print_process_info(
   #  log_info["environ"] = environ # spammy
   if len(cmdline) > 0 and cmdline[0] in {"g++", "gcc"}:
     name = shlex.join(cmdline) # TODO print cmdline for all commands?
-    del log_info["cmdline"]
-    print(f"{sum_cpu:{cpu_width}.1f} {sum_mem:3.0f} {Float(sum_rss):4.0h} {depth*indent}{name} info={repr(log_info)}", file=file)
+    #del log_info["cmdline"]
+    #print(f"{sum_cpu:{cpu_width}.1f} {sum_mem:3.0f} {Float(sum_rss):4.0h} {depth*indent}{name} info={repr(log_info)}", file=file)
+    # g++ has always 2 child procs: cc1plus, as
+    # g++ has always the same cwd as its parent
+    print(f"{sum_cpu:{cpu_width}.1f} {sum_mem:3.0f} {Float(sum_rss):4.0h} {depth*indent}{name}", file=file)
   else:
     print(f"{sum_cpu:{cpu_width}.1f} {sum_mem:3.0f} {Float(sum_rss):4.0h} {depth*indent}{name} info={repr(log_info)}", file=file)
   for child_pid in process_info[root_pid]["child_pids"]:
