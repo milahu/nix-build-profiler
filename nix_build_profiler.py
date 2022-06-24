@@ -219,9 +219,8 @@ def main():
   max_load = int(os.environ.get("NIX_BUILD_CORES", "0"))
   total_cores = os.cpu_count()
   check_load = 0 < max_load and max_load < total_cores
-  #max_load_tolerance = 0.25 # 25%
-  max_load_tolerance = 0
-  tolerant_max_load = max_load * (1 - max_load_tolerance)
+  max_load_tolerance = 0.20 # 20%
+  tolerant_max_load = max_load * (1 + max_load_tolerance)
 
   try:
 
