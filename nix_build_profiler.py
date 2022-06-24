@@ -26,9 +26,6 @@ import io
 config_interval = 1
 config_root_process_name = 'nix-daemon'
 
-# debug: print env of every proc. verbose!
-config_print_env_vars = False
-
 #psutil.cpu_percent() # start monitoring cpu
 
 cpu_count = psutil.cpu_count()
@@ -61,30 +58,8 @@ def find_root_process(name):
   return ls[0]
 
 
-ps_fields = ['pid', 'ppid', 'name', 'exe', 'cmdline', 'cwd', 'environ', 'status', 'cpu_times', 'cpu_percent', 'memory_percent', 'memory_info', 'create_time']
-# TODO num_threads?
-# NOTE create_time not on windows
+ps_fields = ['pid', 'ppid', 'name', 'exe', 'cmdline', 'cwd', 'environ', 'status', 'cpu_times', 'cpu_percent', 'memory_percent', 'memory_info']
 
-if config_print_env_vars:
-  ps_fields.append('environ')
-
-def init_process_info(process_info, pid):
-  process_info[pid]["child_pids"] = list()
-  process_info[pid]["sum_cpu"] = process_info[pid]["cpu_percent"]
-  process_info[pid]["sum_mem"] = process_info[pid]["memory_percent"]
-  process_info[pid]["sum_rss"] = process_info[pid]["memory_info"].rss
-  # ncp = number of child processes
-  # will be set in cumulate_process_info
-  process_info[pid]["sum_ncp"] = 1 # 1 = include self
-  # pretty
-  if len(process_info[pid]["cmdline"]) == 0:
-    process_info[pid]["cmdline"] = [os.path.basename(process_info[pid]["exe"])]
-  else:
-    # full path of info["cmdline"][0] is in info["exe"]
-    process_info[pid]["cmdline"][0] = os.path.basename(process_info[pid]["cmdline"][0])
-  process_info[pid]["total_time"] = time.time() - process_info[pid]["create_time"]
-  process_info[pid]["alltime_load"] = (process_info[pid]["cpu_times"].user + process_info[pid]["cpu_times"].system) / process_info[pid]["total_time"]
-  process_info[pid]["sum_alltime_load"] = process_info[pid]["alltime_load"]
 
 def get_process_info(root_process):
 
@@ -100,7 +75,13 @@ def get_process_info(root_process):
     if pid == root_process.pid:
       found_root_process = True
       process_info[pid] = process.info
-      init_process_info(process_info, pid)
+
+      # TODO refactor
+      process_info[pid]["child_pids"] = list()
+      process_info[pid]["sum_cpu"] = process_info[pid]["cpu_percent"]
+      process_info[pid]["sum_mem"] = process_info[pid]["memory_percent"]
+      process_info[pid]["sum_rss"] = process_info[pid]["memory_info"].rss
+
       continue
 
     if found_root_process == False:
@@ -120,15 +101,13 @@ def get_process_info(root_process):
   return process_info
 
 
-def cumulate_process_info(process_info, parent_pid):
-  for child_pid in process_info[parent_pid]["child_pids"]:
-    cumulate_process_info(process_info, child_pid) # depth first
-    process_info[parent_pid]["sum_cpu"] += process_info[child_pid]["sum_cpu"]
-    process_info[parent_pid]["sum_mem"] += process_info[child_pid]["sum_mem"]
-    process_info[parent_pid]["sum_rss"] += process_info[child_pid]["sum_rss"]
-    process_info[parent_pid]["sum_ncp"] += process_info[child_pid]["sum_ncp"]
-    process_info[parent_pid]["sum_alltime_load"] += process_info[child_pid]["sum_alltime_load"]
-  process_info[parent_pid]["ncp"] = len(process_info[parent_pid]["child_pids"])
+def cumulate_process_info(process_info, root_pid):
+  # depth first
+  for child_pid in process_info[root_pid]["child_pids"]:
+    cumulate_process_info(process_info, child_pid)
+    process_info[root_pid]["sum_cpu"] += process_info[child_pid]["sum_cpu"]
+    process_info[root_pid]["sum_mem"] += process_info[child_pid]["sum_mem"]
+    process_info[root_pid]["sum_rss"] += process_info[child_pid]["sum_rss"]
 
 
 todo_add_token_time = None
@@ -174,7 +153,6 @@ def print_process_info(
   child_procs = len(info["child_pids"])
   if len(cmdline) > 0:
     cmdline[0] = os.path.basename(cmdline[0]) # full path is in info["exe"]
-    #if cmdline[0] in {"g++", "gcc", "cc1plus", "as"}:
     if cmdline[0] in {"g++", "gcc"}: # TODO fix other verbose commands
       # make gcc less verbose
       cmdline_short = []
@@ -183,7 +161,6 @@ def print_process_info(
         if skip_value:
           skip_value = False
           continue
-        # TODO "-MQ",
         if arg in {"-I", "-B", "-D", "-U", "-isystem", "-idirafter", "--param", "-MF", "-dumpdir", "-dumpbase", "-dumpbase-ext"}:
           # -isystem is the most frequent
           skip_value = True
@@ -199,8 +176,9 @@ def print_process_info(
         cmdline_short.append(arg)
       cmdline = cmdline_short
 
-    if cmdline[0] in {"g++", "gcc"}:
-      process_info[root_pid]["child_pids"] = [] # hide gcc child procs: cc1plus, as, ...
+    if cmdline[0] in {"g++", "gcc", "stress-ng"}:
+      # hide child procs
+      process_info[root_pid]["child_pids"] = []
   # TODO print cwd only when different from parent process
   log_info = {"child_procs": child_procs, "cmdline": cmdline}
   if depth == 0:
