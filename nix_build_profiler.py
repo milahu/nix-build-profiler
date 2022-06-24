@@ -216,7 +216,7 @@ def main():
 
   root_process = find_root_process(config_root_process_name)
 
-  max_load = os.environ.get("NIX_BUILD_CORES", 0)
+  max_load = int(os.environ.get("NIX_BUILD_CORES", "0"))
   total_cores = os.cpu_count()
   check_load = 0 < max_load and max_load < total_cores
   #max_load_tolerance = 0.25 # 25%
