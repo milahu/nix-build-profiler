@@ -1,9 +1,11 @@
 { lib
-, buildPythonPackage
-, psutil
-, prefixed
+, python3
 , writeText
 }:
+
+let
+  inherit (python3.pkgs) buildPythonPackage psutil prefixed;
+in
 
 buildPythonPackage rec {
   pname = "nix-build-profiler";
