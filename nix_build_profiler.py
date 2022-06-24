@@ -232,7 +232,8 @@ def main():
       cumulate_process_info(process_info, root_process.pid)
 
       if check_load:
-        if process_info[root_process.pid]["sum_cpu"] < tolerant_max_load:
+        total_load = process_info[root_process.pid]["sum_cpu"] / 100
+        if total_load < tolerant_max_load:
           # load is not exceeded -> dont print
           continue
 
