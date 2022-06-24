@@ -155,8 +155,9 @@ def print_process_info(process_info, root_pid, file=sys.stdout, depth=0):
         cmdline_short.append(arg)
       cmdline = cmdline_short
 
-    if cmdline[0] in {"g++", "gcc"}:
-      process_info[root_pid]["child_pids"] = [] # hide gcc child procs: cc1plus, as, ...
+    if cmdline[0] in {"g++", "gcc", "stress-ng"}:
+      # hide child procs
+      process_info[root_pid]["child_pids"] = []
   # TODO print cwd only when different from parent process
   log_info = {"child_procs": child_procs, "cmdline": cmdline}
   if depth == 0:
