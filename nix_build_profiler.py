@@ -59,6 +59,7 @@ def find_root_process(name):
 
 
 ps_fields = ['pid', 'ppid', 'name', 'exe', 'cmdline', 'cwd', 'environ', 'status', 'cpu_times', 'cpu_percent', 'memory_percent', 'memory_info']
+# TODO num_threads?
 
 
 def get_process_info(root_process):
@@ -81,6 +82,15 @@ def get_process_info(root_process):
       process_info[pid]["sum_cpu"] = process_info[pid]["cpu_percent"]
       process_info[pid]["sum_mem"] = process_info[pid]["memory_percent"]
       process_info[pid]["sum_rss"] = process_info[pid]["memory_info"].rss
+      # ncp = number of child processes
+      # will be set in cumulate_process_info
+      process_info[pid]["sum_ncp"] = 1 # 1 = include self
+      # pretty
+      if len(process_info[pid]["cmdline"]) == 0:
+        process_info[pid]["cmdline"][0] = os.path.basename(process_info[pid]["exe"])
+      else:
+        # full path of info["cmdline"][0] is in info["exe"]
+        process_info[pid]["cmdline"][0] = os.path.basename(process_info[pid]["cmdline"][0])
 
       continue
 
@@ -95,19 +105,35 @@ def get_process_info(root_process):
     ppid = process.info["ppid"]
     if ppid in process_info:
       process_info[pid] = process.info
-      init_process_info(process_info, pid)
+
+      # TODO refactor
+      process_info[pid]["child_pids"] = list()
+      process_info[pid]["sum_cpu"] = process_info[pid]["cpu_percent"]
+      process_info[pid]["sum_mem"] = process_info[pid]["memory_percent"]
+      process_info[pid]["sum_rss"] = process_info[pid]["memory_info"].rss
+      process_info[pid]["sum_ncp"] = 1
+      # pretty
+      if len(process_info[pid]["cmdline"]) == 0:
+        process_info[pid]["cmdline"][0] = os.path.basename(process_info[pid]["exe"])
+      else:
+        # full path of info["cmdline"][0] is in info["exe"]
+        process_info[pid]["cmdline"][0] = os.path.basename(process_info[pid]["cmdline"][0])
+
       process_info[ppid]["child_pids"].append(pid)
 
   return process_info
 
 
-def cumulate_process_info(process_info, root_pid):
-  # depth first
-  for child_pid in process_info[root_pid]["child_pids"]:
-    cumulate_process_info(process_info, child_pid)
-    process_info[root_pid]["sum_cpu"] += process_info[child_pid]["sum_cpu"]
-    process_info[root_pid]["sum_mem"] += process_info[child_pid]["sum_mem"]
-    process_info[root_pid]["sum_rss"] += process_info[child_pid]["sum_rss"]
+def cumulate_process_info(process_info, parent_pid):
+  for child_pid in process_info[parent_pid]["child_pids"]:
+    cumulate_process_info(process_info, child_pid) # depth first
+    process_info[parent_pid]["sum_cpu"] += process_info[child_pid]["sum_cpu"]
+    process_info[parent_pid]["sum_mem"] += process_info[child_pid]["sum_mem"]
+    process_info[parent_pid]["sum_rss"] += process_info[child_pid]["sum_rss"]
+    process_info[parent_pid]["sum_ncp"] += process_info[child_pid]["sum_ncp"]
+    #process_info[parent_pid]["sum_ncp"] += len(process_info[child_pid]["child_pids"])
+  process_info[parent_pid]["ncp"] = len(process_info[parent_pid]["child_pids"])
+  process_info[parent_pid]["sum_ncp"] += process_info[parent_pid]["ncp"]
 
 
 todo_add_token_time = None
@@ -131,13 +157,12 @@ def print_process_info(
   if depth == 0:
     #print(f"\n{'load':<{cpu_width}s} mem rss  vms  proc @ {t}", file=file)
     #print(f"\n{'load':<{cpu_width}s} mem rss  Ncp ncp  proc @ {t}", file=file)
-    #print(f"\n{'load':<{cpu_width}s}  rss spr cpr proc @ {t}", file=file)
-    print(f"\n{'load':>{cpu_width}s} {'Load':>{cpu_width}s}  rss  time spr cpr proc", file=file)
+    print(f"\n{'load':<{cpu_width}s}  rss spr cpr proc @ {t}", file=file)
     #print(f"\n{'load':<{cpu_width}s} mem proc @ {t}", file=file)
     # spr = sum of all child processes, including self
     # cpr = number of first child processes, excluding transitive children
 
-  indent = "  "
+  indent = " "
   info = process_info[root_pid]
   sum_cpu = info["sum_cpu"] / 100 # = load
   sum_mem = info["sum_mem"]
@@ -152,7 +177,7 @@ def print_process_info(
   environ = info["environ"] # always None
   child_procs = len(info["child_pids"])
   if len(cmdline) > 0:
-    cmdline[0] = os.path.basename(cmdline[0]) # full path is in info["exe"]
+    #cmdline[0] = os.path.basename(cmdline[0]) # full path is in info["exe"]
     if cmdline[0] in {"g++", "gcc"}: # TODO fix other verbose commands
       # make gcc less verbose
       cmdline_short = []
@@ -176,29 +201,46 @@ def print_process_info(
         cmdline_short.append(arg)
       cmdline = cmdline_short
 
-    if cmdline[0] in {"g++", "gcc", "stress-ng"}:
+    if cmdline[0] in {"g++", "gcc"}:
       # hide child procs
       process_info[root_pid]["child_pids"] = []
   # TODO print cwd only when different from parent process
-  log_info = {"child_procs": child_procs, "cmdline": cmdline}
+  #log_info = {"cmdline": cmdline}
+  log_info = {}
   if depth == 0:
     log_info["cwd"] = cwd
   else:
     parent_cwd = process_info[info["ppid"]]["cwd"]
     if cwd != parent_cwd:
       log_info["cwd"] = cwd
-  log_info["exe"] = exe
+  #log_info["exe"] = exe
   #if depth == 0:
   #  log_info["environ"] = environ # spammy
+  info_str = ""
   if len(cmdline) > 0 and cmdline[0] in {"g++", "gcc"}:
-    name = shlex.join(cmdline) # TODO print cmdline for all commands?
+    name = shlex.join(cmdline)
     #del log_info["cmdline"]
     #print(f"{sum_cpu:{cpu_width}.1f} {sum_mem:3.0f} {Float(sum_rss):4.0h} {depth*indent}{name} info={repr(log_info)}", file=file)
     # g++ has always 2 child procs: cc1plus, as
     # g++ has always the same cwd as its parent
-    print(f"{sum_cpu:{cpu_width}.1f} {sum_mem:3.0f} {Float(sum_rss):4.0h} {depth*indent}{name}", file=file)
+  elif name in {"stress-ng"}:
+    if process_info[info["ppid"]]["name"] == name:
+      # fork
+      pass
+    else:
+      # root process of stress-ng
+      name = shlex.join(cmdline)
   else:
-    print(f"{sum_cpu:{cpu_width}.1f} {sum_mem:3.0f} {Float(sum_rss):4.0h} {depth*indent}{name} info={repr(log_info)}", file=file)
+    name = shlex.join(cmdline) # print cmdline for all commands
+    if log_info:
+      info_str = f" # {repr(log_info)}"
+
+  mebi = 1024 * 1024
+
+  #print(f"{sum_cpu:{cpu_width}.1f} {sum_mem:3.0f} {Float(sum_rss):4.0h} {sum_ncp:3d} {ncp:3d} {depth*indent}{name}{info_str}", file=file)
+  #print(f"{sum_cpu:{cpu_width}.1f} {sum_ncp:3d} {Float(sum_rss):4.0h} {ncp:3d} {depth*indent}{name}{info_str}", file=file)
+  print(f"{sum_cpu:{cpu_width}.1f} {(sum_rss / mebi):4.0f} {sum_ncp:3d} {ncp:3d} {depth*indent}{name}{info_str}", file=file)
+
   for child_pid in process_info[root_pid]["child_pids"]:
     print_process_info(
       process_info,
@@ -221,6 +263,8 @@ def main():
   check_load = 0 < max_load and max_load < total_cores
   max_load_tolerance = 0.20 # 20%
   tolerant_max_load = max_load * (1 + max_load_tolerance)
+
+  #check_load = False # debug. TODO expose option
 
   try:
 
