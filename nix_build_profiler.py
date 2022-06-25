@@ -61,7 +61,7 @@ def find_root_process(name):
 ps_fields = ['pid', 'ppid', 'name', 'exe', 'cmdline', 'cwd', 'environ', 'status', 'cpu_times', 'cpu_percent', 'memory_percent', 'memory_info']
 # TODO num_threads?
 
-ps_fields.append('env') # debug
+ps_fields.append('environ') # debug
 
 def get_process_info(root_process):
 
@@ -243,8 +243,8 @@ def print_process_info(
   print(f"{sum_cpu:{cpu_width}.1f} {(sum_rss / mebi):4.0f} {sum_ncp:3d} {ncp:3d} {depth*indent}{name}{info_str}", file=file)
 
   # debug: print env of every proc. verbose!
-  for k in info["env"]:
-    v = info["env"][k]
+  for k in info["environ"]:
+    v = info["environ"][k]
     print(f"                   {depth*indent} {k}: {v}")
 
   for child_pid in process_info[root_pid]["child_pids"]:
