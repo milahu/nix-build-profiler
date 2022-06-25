@@ -87,7 +87,7 @@ def get_process_info(root_process):
       process_info[pid]["sum_ncp"] = 1 # 1 = include self
       # pretty
       if len(process_info[pid]["cmdline"]) == 0:
-        process_info[pid]["cmdline"][0] = os.path.basename(process_info[pid]["exe"])
+        process_info[pid]["cmdline"] = [os.path.basename(process_info[pid]["exe"])]
       else:
         # full path of info["cmdline"][0] is in info["exe"]
         process_info[pid]["cmdline"][0] = os.path.basename(process_info[pid]["cmdline"][0])
@@ -114,7 +114,7 @@ def get_process_info(root_process):
       process_info[pid]["sum_ncp"] = 1
       # pretty
       if len(process_info[pid]["cmdline"]) == 0:
-        process_info[pid]["cmdline"][0] = os.path.basename(process_info[pid]["exe"])
+        process_info[pid]["cmdline"] = [os.path.basename(process_info[pid]["exe"])]
       else:
         # full path of info["cmdline"][0] is in info["exe"]
         process_info[pid]["cmdline"][0] = os.path.basename(process_info[pid]["cmdline"][0])
