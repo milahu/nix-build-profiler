@@ -280,7 +280,7 @@ def main():
           # load is not exceeded -> dont print
           continue
         else:
-          print(f"nix_build_profiler: load exceeded. cur {total_load} max {max_load}")
+          print(f"\nnix_build_profiler: load exceeded. cur {total_load:.1f} max {max_load}")
 
       string_file = io.StringIO()
       print_process_info(process_info, root_process.pid, file=string_file)
