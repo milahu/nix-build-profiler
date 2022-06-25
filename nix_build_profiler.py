@@ -213,7 +213,7 @@ def print_process_info(
     parent_cwd = process_info[info["ppid"]]["cwd"]
     if cwd != parent_cwd:
       log_info["cwd"] = cwd
-  #log_info["exe"] = exe
+  log_info["exe"] = exe
   #if depth == 0:
   #  log_info["environ"] = environ # spammy
   info_str = ""
