@@ -26,6 +26,9 @@ import io
 config_interval = 1
 config_root_process_name = 'nix-daemon'
 
+# debug: print env of every proc. verbose!
+config_print_env_vars = False
+
 #psutil.cpu_percent() # start monitoring cpu
 
 cpu_count = psutil.cpu_count()
@@ -61,7 +64,8 @@ def find_root_process(name):
 ps_fields = ['pid', 'ppid', 'name', 'exe', 'cmdline', 'cwd', 'environ', 'status', 'cpu_times', 'cpu_percent', 'memory_percent', 'memory_info']
 # TODO num_threads?
 
-ps_fields.append('environ') # debug
+if config_print_env_vars:
+  ps_fields.append('environ')
 
 def get_process_info(root_process):
 
@@ -242,10 +246,10 @@ def print_process_info(
   #print(f"{sum_cpu:{cpu_width}.1f} {sum_ncp:3d} {Float(sum_rss):4.0h} {ncp:3d} {depth*indent}{name}{info_str}", file=file)
   print(f"{sum_cpu:{cpu_width}.1f} {(sum_rss / mebi):4.0f} {sum_ncp:3d} {ncp:3d} {depth*indent}{name}{info_str}", file=file)
 
-  # debug: print env of every proc. verbose!
-  for k in info["environ"]:
-    v = info["environ"][k]
-    print(f"                   {depth*indent} {k}: {repr(v)}", file=file)
+  if config_print_env_vars:
+    for k in info["environ"]:
+        v = info["environ"][k]
+        print(f"                   {depth*indent} {k}: {repr(v)}", file=file)
 
   for child_pid in process_info[root_pid]["child_pids"]:
     print_process_info(
