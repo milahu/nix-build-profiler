@@ -274,7 +274,7 @@ def main():
   max_load_tolerance = 0.20 # 20%
   tolerant_max_load = max_load * (1 + max_load_tolerance)
 
-  #check_load = False # debug. TODO expose option
+  check_load = False # debug. TODO expose option
 
   try:
 
