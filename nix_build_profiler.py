@@ -263,14 +263,24 @@ def print_process_info(
     len(cmdline) > 1
     and cmdline[1] == "../../../../../src/3rdparty/chromium/third_party/devtools-frontend/src/node_modules/rollup/dist/bin/rollup"
   ):
-    for k in ["MAKEFLAGS", "DEBUG_JEST_WORKER", "DEBUG_JOBCLIENT"]:
-      v = info["environ"].get(k)
-      print(f"                   {depth*indent} {k}: {repr(v)}", file=file)
-    # list file descriptors of process
-    cmd_str = f"ls -l /proc/{root_pid}/fd/"
-    print(f"$ {cmd_str}", file=file)
-    cmd_out = subprocess.check_output(cmd_str, shell=True, stderr=subprocess.STDOUT, text=True)
-    file.write(cmd_out)
+    # loop from this process to all parents
+    _pid = root_pid
+    while _pid:
+      _info = process_info[_pid]
+      _cmdline_str = shlex.join(_info["cmdline"])
+      print("")
+      print(f"proc {_pid}: {_cmdline_str}")
+      print(f"env:")
+      #for k in ["MAKEFLAGS", "DEBUG_JEST_WORKER", "DEBUG_JOBCLIENT"]:
+      for k in ["MAKEFLAGS"]:
+        v = _info["environ"].get(k)
+        print(f"  {k}: {repr(v)}", file=file)
+      # list file descriptors of process
+      cmd_str = f"ls -lv /proc/{_pid}/fd/"
+      print(f"$ {cmd_str}", file=file)
+      cmd_out = subprocess.check_output(cmd_str, shell=True, stderr=subprocess.STDOUT, text=True)
+      file.write(cmd_out)
+      _pid = _info["ppid"]
 
   # recursion
   for child_pid in process_info[root_pid]["child_pids"]:
