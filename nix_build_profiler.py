@@ -239,6 +239,7 @@ def print_process_info(
       name = shlex.join(cmdline)
   else:
     name = shlex.join(cmdline) # print cmdline for all commands
+    # FIXME rename name to cmdline_str
     if log_info:
       info_str = f" # {repr(log_info)}"
 
@@ -256,8 +257,10 @@ def print_process_info(
   # print extra info
   # debug jobclient in jest-worker
   if (
-    name == "node" and len(cmdline) > 1 and
-    cmdline[1] == "../../../../../src/3rdparty/chromium/third_party/devtools-frontend/src/node_modules/rollup/dist/bin/rollup"
+    #name == "node" # error: name is the joined cmdline!
+    #and
+    len(cmdline) > 1
+    and cmdline[1] == "../../../../../src/3rdparty/chromium/third_party/devtools-frontend/src/node_modules/rollup/dist/bin/rollup"
   ):
     for k in ["MAKEFLAGS", "DEBUG_JEST_WORKER", "DEBUG_JOBCLIENT"]:
       v = info["environ"].get(k)
