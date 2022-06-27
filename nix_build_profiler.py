@@ -170,7 +170,7 @@ def print_process_info(
     # spr = sum of all child processes, including self
     # cpr = number of first child processes, excluding transitive children
 
-  indent = " "
+  indent = "  "
   info = process_info[root_pid]
   sum_cpu = info["sum_cpu"] / 100 # = load
   sum_mem = info["sum_mem"]
@@ -263,12 +263,19 @@ def print_process_info(
     len(cmdline) > 1
     and cmdline[1] == "../../../../../src/3rdparty/chromium/third_party/devtools-frontend/src/node_modules/rollup/dist/bin/rollup"
   ):
+    # TODO summary: print parents of this proc. only names and pids
+    # aaaaa 1
+    #   bbbb 2
+    #     cccccc 3
+    #       ddddddd 4
     # loop from this process to all parents
     _pid = root_pid
+    _depth = depth
     while _pid:
       _info = process_info[_pid]
       _cmdline_str = shlex.join(_info["cmdline"])
       print("", file=file)
+      print(f"depth: {_depth}", file=file)
       print(f"proc {_pid}: {_cmdline_str}", file=file)
       print(f"env:", file=file)
       #for k in ["MAKEFLAGS", "DEBUG_JEST_WORKER", "DEBUG_JOBCLIENT"]:
@@ -276,11 +283,15 @@ def print_process_info(
         v = _info["environ"].get(k)
         print(f"  {k}: {repr(v)}", file=file)
       # list file descriptors of process
-      cmd_str = f"ls -lv /proc/{_pid}/fd/"
-      print(f"$ {cmd_str}", file=file)
-      cmd_out = subprocess.check_output(cmd_str, shell=True, stderr=subprocess.STDOUT, text=True)
-      file.write(cmd_out)
+      try:
+        cmd_str = f"ls -lv /proc/{_pid}/fd/"
+        print(f"$ {cmd_str}", file=file)
+        cmd_out = subprocess.check_output(cmd_str, shell=True, stderr=subprocess.STDOUT, text=True)
+        file.write(cmd_out)
+      except subprocess.CalledProcessError: # process is gone
+        break # parents are gone too
       _pid = _info["ppid"]
+      depth = depth - 1
 
   # recursion
   for child_pid in process_info[root_pid]["child_pids"]:
