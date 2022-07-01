@@ -150,6 +150,7 @@ def print_process_info(
     file=sys.stdout,
     depth=0,
     load_exceeded=True,
+    check_load=True,
     print_jobserver_stats=True,
   ):
 
@@ -337,7 +338,7 @@ def print_process_info(
           print(f"ninja jobserver: free tokens: {len(tokens)}", file=file)
           for token in tokens:
             jobclient.release(token)
-      if not load_exceeded:
+      if check_load and load_exceeded == False:
         # stop recursion -> short tree
         return
 
@@ -349,6 +350,7 @@ def print_process_info(
       file,
       depth + 1,
       load_exceeded=load_exceeded,
+      check_load=check_load,
       print_jobserver_stats=print_jobserver_stats,
     )
 
@@ -392,6 +394,7 @@ def main():
         root_process.pid,
         file=string_file,
         load_exceeded=load_exceeded,
+        check_load=check_load,
         print_jobserver_stats=print_jobserver_stats,
       )
       print(string_file.getvalue(), end="") # one flush
