@@ -397,15 +397,19 @@ def main():
         force_print = True
         # force print, at least print short tree until ninja + jobserver stats
 
+      load_status_str = "ok"
       if is_overload:
-        print(f"\nnix_build_profiler: overload. cur {total_load:.1f} max {max_load} ({tolerant_max_load:.1f})")
+        load_status_str = "overload"
       elif is_underload:
-        print(f"\nnix_build_profiler: underload. cur {total_load:.1f} min {min_load} ({tolerant_min_load:.1f})")
-      elif check_load == False:
-        print(f"\nnix_build_profiler: load ok. cur {total_load:.1f} max {max_load}")
-      elif force_print == False:
-        # dont print
-        continue
+        load_status_str = "underload"
+
+      # TODO print jobserver stats in the status_line
+      status_line = f"nix_build_profiler: load {total_load:.1f} = {load_status_str}. min {min_load} ({tolerant_min_load:.1f}) max {max_load} ({tolerant_max_load:.1f})"
+
+      if is_overload or is_underload or check_load == False or force_print == True:
+        print("\n" + status_line)
+      else:
+        continue # dont print
 
       string_file = io.StringIO()
       print_process_info(
