@@ -373,10 +373,10 @@ def main():
 
       cumulate_process_info(process_info, root_process.pid)
 
+      total_load = process_info[root_process.pid]["sum_cpu"] / 100
       load_exceeded = total_load > tolerant_max_load
 
       if check_load:
-        total_load = process_info[root_process.pid]["sum_cpu"] / 100
         if load_exceeded:
           print(f"\nnix_build_profiler: load exceeded. cur {total_load:.1f} max {max_load}")
         elif print_jobserver_stats:
