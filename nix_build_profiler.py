@@ -24,6 +24,8 @@ import shlex
 import io
 import subprocess
 
+import gnumake_tokenpool
+
 config_interval = 1
 config_root_process_name = 'nix-daemon'
 
@@ -142,23 +144,14 @@ def cumulate_process_info(process_info, parent_pid):
   process_info[parent_pid]["sum_ncp"] += process_info[parent_pid]["ncp"]
 
 
-todo_add_token_time = None
-
 def print_process_info(
     process_info,
     root_pid,
     file=sys.stdout,
     depth=0,
-    is_overload=False,
-    is_underload=False,
-    check_load=True,
+    load_exceeded=True,
     print_jobserver_stats=True,
   ):
-
-  global todo_add_token_time
-
-  # TODO rename root_pid to pid
-  pid = root_pid
 
   # TODO rename root_pid to pid
 
@@ -185,7 +178,7 @@ def print_process_info(
   environ = info["environ"] # always None
   child_procs = len(info["child_pids"])
   if len(cmdline) > 0:
-    #cmdline[0] = os.path.basename(cmdline[0]) # full path is in info["exe"]
+    cmdline[0] = os.path.basename(cmdline[0]) # full path is in info["exe"]
     if cmdline[0] in {"g++", "gcc"}: # TODO fix other verbose commands
       # make gcc less verbose
       cmdline_short = []
@@ -302,6 +295,50 @@ def print_process_info(
         _pid = _info["ppid"]
         depth = depth - 1
 
+  cmdline[0] = os.path.basename(cmdline[0]) # full path is in info["exe"]
+  if print_jobserver_stats:
+    if (
+      #name == "node" # error: name is the joined cmdline!
+      len(cmdline) > 2
+      # ninja -j32 --tokenpool-master
+      # ninja -j32 -l32 --tokenpool-master
+      and cmdline[0] == "ninja"
+      and "--tokenpool-master" in cmdline
+    ):
+      fds_str = None
+      try:
+        fds_str = os.listdir(f"/proc/{pid}/fd")
+      # list of strings: ['0', '1', '2', '3', '17', '58', '59']
+      except FileNotFoundError:
+        pass
+      if fds_str and '3' in fds_str and '4' in fds_str: # default fds: 3, 4
+        named_pipes = [
+          f"/proc/{pid}/fd/3",
+          f"/proc/{pid}/fd/4",
+        ]
+        jobclient = None
+        try:
+          jobclient = gnumake_tokenpool.JobClient(
+            max_jobs=32, # TODO parse from cmdline: ninja -j32
+            named_pipes=named_pipes
+          )
+        except gnumake_tokenpool.NoJobServer:
+          pass
+        if jobclient:
+          # acquire all tokens
+          tokens = []
+          while True:
+            token = jobclient.acquire()
+            if token is None:
+              break
+            tokens.append(token)
+          print(f"ninja jobserver: free tokens: {len(tokens)}")
+          for token in tokens:
+            jobclient.release(token)
+    if not load_exceeded:
+      # stop recursion -> short tree
+      return
+
   # recursion
   for child_pid in process_info[root_pid]["child_pids"]:
     print_process_info(
@@ -309,9 +346,7 @@ def print_process_info(
       child_pid,
       file,
       depth + 1,
-      is_overload=is_overload,
-      is_underload=is_underload,
-      check_load=check_load,
+      load_exceeded=load_exceeded,
       print_jobserver_stats=print_jobserver_stats,
     )
 
@@ -328,6 +363,8 @@ def main():
 
   #check_load = False # debug. TODO expose option
 
+  print_jobserver_stats = True
+
   try:
 
     while True:
@@ -336,16 +373,26 @@ def main():
 
       cumulate_process_info(process_info, root_process.pid)
 
+      load_exceeded = total_load > tolerant_max_load
+
       if check_load:
         total_load = process_info[root_process.pid]["sum_cpu"] / 100
-        if total_load < tolerant_max_load:
-          # load is not exceeded -> dont print
-          continue
-        else:
+        if load_exceeded:
           print(f"\nnix_build_profiler: load exceeded. cur {total_load:.1f} max {max_load}")
+        elif print_jobserver_stats:
+          print(f"\nnix_build_profiler: load ok. cur {total_load:.1f} max {max_load}")
+        else:
+          # dont print
+          continue
 
       string_file = io.StringIO()
-      print_process_info(process_info, root_process.pid, file=string_file)
+      print_process_info(
+        process_info,
+        root_process.pid,
+        file=string_file,
+        load_exceeded=load_exceeded,
+        print_jobserver_stats=print_jobserver_stats,
+      )
       print(string_file.getvalue(), end="") # one flush
 
       time.sleep(config_interval)
