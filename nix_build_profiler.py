@@ -149,7 +149,8 @@ def print_process_info(
     root_pid,
     file=sys.stdout,
     depth=0,
-    load_exceeded=True,
+    is_overload=False,
+    is_underload=False,
     check_load=True,
     print_jobserver_stats=True,
   ):
@@ -336,9 +337,11 @@ def print_process_info(
               break
             tokens.append(token)
           print(f"ninja jobserver: free tokens: {len(tokens)}", file=file)
+          # TODO prettier ... with load ok, print only jobserver stats,
+          # nothing of the process tree (except force_print==True or check_load==False)
           for token in tokens:
             jobclient.release(token)
-      if check_load and load_exceeded == False:
+      if check_load and (is_overload == False and is_underload == False):
         # stop recursion -> short tree
         return
 
@@ -349,7 +352,8 @@ def print_process_info(
       child_pid,
       file,
       depth + 1,
-      load_exceeded=load_exceeded,
+      is_overload=is_overload,
+      is_underload=is_underload,
       check_load=check_load,
       print_jobserver_stats=print_jobserver_stats,
     )
@@ -360,10 +364,13 @@ def main():
   root_process = find_root_process(config_root_process_name)
 
   max_load = int(os.environ.get("NIX_BUILD_CORES", "0"))
+  min_load = 0.8 * max_load # 80% of 32 cores = 25.6
   total_cores = os.cpu_count()
   check_load = 0 < max_load and max_load < total_cores
   max_load_tolerance = 0.20 # 20%
+  min_load_tolerance = 0.20 # 20% # 25.6 -20% = 20.48
   tolerant_max_load = max_load * (1 + max_load_tolerance)
+  tolerant_min_load = min_load * (1 - min_load_tolerance)
 
   check_load = False # debug. TODO expose option
 
@@ -378,13 +385,25 @@ def main():
       cumulate_process_info(process_info, root_process.pid)
 
       total_load = process_info[root_process.pid]["sum_cpu"] / 100
-      load_exceeded = total_load > tolerant_max_load
 
-      if load_exceeded:
-        print(f"\nnix_build_profiler: load exceeded. cur {total_load:.1f} max {max_load}")
-      elif print_jobserver_stats or check_load == False:
+      is_overload = total_load > tolerant_max_load
+      is_underload = total_load < tolerant_min_load
+
+      if print_jobserver_stats:
+        check_load = False
+
+      force_print = False
+      if print_jobserver_stats:
+        force_print = True
+        # force print, at least print short tree until ninja + jobserver stats
+
+      if is_overload:
+        print(f"\nnix_build_profiler: overload. cur {total_load:.1f} max {max_load} ({tolerant_max_load:.1f})")
+      elif is_underload:
+        print(f"\nnix_build_profiler: underload. cur {total_load:.1f} min {min_load} ({tolerant_min_load:.1f})")
+      elif check_load == False:
         print(f"\nnix_build_profiler: load ok. cur {total_load:.1f} max {max_load}")
-      else:
+      elif force_print == False:
         # dont print
         continue
 
@@ -393,7 +412,8 @@ def main():
         process_info,
         root_process.pid,
         file=string_file,
-        load_exceeded=load_exceeded,
+        is_overload=is_overload,
+        is_underload=is_underload,
         check_load=check_load,
         print_jobserver_stats=print_jobserver_stats,
       )
