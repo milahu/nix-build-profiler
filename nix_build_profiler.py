@@ -321,7 +321,8 @@ def print_process_info(
         try:
           jobclient = gnumake_tokenpool.JobClient(
             max_jobs=32, # TODO parse from cmdline: ninja -j32
-            named_pipes=named_pipes
+            named_pipes=named_pipes,
+            debug=False, debug2=False, # quiet
           )
         except gnumake_tokenpool.NoJobServer:
           pass
@@ -333,7 +334,7 @@ def print_process_info(
             if token is None:
               break
             tokens.append(token)
-          print(f"ninja jobserver: free tokens: {len(tokens)}")
+          print(f"ninja jobserver: free tokens: {len(tokens)}", file=file)
           for token in tokens:
             jobclient.release(token)
       if not load_exceeded:
@@ -362,7 +363,7 @@ def main():
   max_load_tolerance = 0.20 # 20%
   tolerant_max_load = max_load * (1 + max_load_tolerance)
 
-  #check_load = False # debug. TODO expose option
+  check_load = False # debug. TODO expose option
 
   print_jobserver_stats = True
 
@@ -377,14 +378,13 @@ def main():
       total_load = process_info[root_process.pid]["sum_cpu"] / 100
       load_exceeded = total_load > tolerant_max_load
 
-      if check_load:
-        if load_exceeded:
-          print(f"\nnix_build_profiler: load exceeded. cur {total_load:.1f} max {max_load}")
-        elif print_jobserver_stats:
-          print(f"\nnix_build_profiler: load ok. cur {total_load:.1f} max {max_load}")
-        else:
-          # dont print
-          continue
+      if load_exceeded:
+        print(f"\nnix_build_profiler: load exceeded. cur {total_load:.1f} max {max_load}")
+      elif print_jobserver_stats or check_load == False:
+        print(f"\nnix_build_profiler: load ok. cur {total_load:.1f} max {max_load}")
+      else:
+        # dont print
+        continue
 
       string_file = io.StringIO()
       print_process_info(
