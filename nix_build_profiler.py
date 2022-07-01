@@ -336,7 +336,9 @@ def print_process_info(
             if token is None:
               break
             tokens.append(token)
-          print(f"ninja jobserver: free tokens: {len(tokens)}", file=file)
+          #print(f"ninja jobserver: free tokens: {len(tokens)}", file=file)
+          if len(tokens) > 0:
+            print(f"ninja jobserver: free tokens: {len(tokens)}", file=file)
           # TODO prettier ... with load ok, print only jobserver stats,
           # nothing of the process tree (except force_print==True or check_load==False)
           for token in tokens:
@@ -374,6 +376,9 @@ def main():
 
   check_load = False # debug. TODO expose option
 
+  # mostly useless. should be "0 free tokens" for 99% of the build time.
+  # at the end of the build, when tokens are missing, make prints a warning.
+  # ninja should do the same (TODO implement?)
   print_jobserver_stats = True
 
   try:
