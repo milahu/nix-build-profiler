@@ -335,9 +335,9 @@ def print_process_info(
           print(f"ninja jobserver: free tokens: {len(tokens)}")
           for token in tokens:
             jobclient.release(token)
-    if not load_exceeded:
-      # stop recursion -> short tree
-      return
+      if not load_exceeded:
+        # stop recursion -> short tree
+        return
 
   # recursion
   for child_pid in process_info[root_pid]["child_pids"]:
