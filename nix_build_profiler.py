@@ -154,6 +154,7 @@ def print_process_info(
   ):
 
   # TODO rename root_pid to pid
+  pid = root_pid
 
   if depth == 0:
     #print(f"\n{'load':<{cpu_width}s} mem rss  vms  proc @ {t}", file=file)
