@@ -71,6 +71,23 @@ ps_fields = ['pid', 'ppid', 'name', 'exe', 'cmdline', 'cwd', 'environ', 'status'
 if config_print_env_vars:
   ps_fields.append('environ')
 
+def init_process_info(process_info, pid):
+  process_info[pid]["child_pids"] = list()
+  process_info[pid]["sum_cpu"] = process_info[pid]["cpu_percent"]
+  process_info[pid]["sum_mem"] = process_info[pid]["memory_percent"]
+  process_info[pid]["sum_rss"] = process_info[pid]["memory_info"].rss
+  # ncp = number of child processes
+  # will be set in cumulate_process_info
+  process_info[pid]["sum_ncp"] = 1 # 1 = include self
+  # pretty
+  if len(process_info[pid]["cmdline"]) == 0:
+    process_info[pid]["cmdline"] = [os.path.basename(process_info[pid]["exe"])]
+  else:
+    # full path of info["cmdline"][0] is in info["exe"]
+    process_info[pid]["cmdline"][0] = os.path.basename(process_info[pid]["cmdline"][0])
+  process_info[pid]["total_time"] = time.time() - process_info[pid]["create_time"]
+  process_info[pid]["total_load"] = (process_info[pid]["cpu_times"].user + process_info[pid]["cpu_times"].system) / process_info[pid]["total_time"]
+
 def get_process_info(root_process):
 
   process_info = dict()
@@ -85,24 +102,7 @@ def get_process_info(root_process):
     if pid == root_process.pid:
       found_root_process = True
       process_info[pid] = process.info
-
-      # TODO refactor
-      process_info[pid]["child_pids"] = list()
-      process_info[pid]["sum_cpu"] = process_info[pid]["cpu_percent"]
-      process_info[pid]["sum_mem"] = process_info[pid]["memory_percent"]
-      process_info[pid]["sum_rss"] = process_info[pid]["memory_info"].rss
-      # ncp = number of child processes
-      # will be set in cumulate_process_info
-      process_info[pid]["sum_ncp"] = 1 # 1 = include self
-      # pretty
-      if len(process_info[pid]["cmdline"]) == 0:
-        process_info[pid]["cmdline"] = [os.path.basename(process_info[pid]["exe"])]
-      else:
-        # full path of info["cmdline"][0] is in info["exe"]
-        process_info[pid]["cmdline"][0] = os.path.basename(process_info[pid]["cmdline"][0])
-      process_info[pid]["total_time"] = time.time() - process_info[pid]["create_time"]
-      process_info[pid]["total_load"] = (process_info[pid]["cpu_times"].user + process_info[pid]["cpu_times"].system) / process_info[pid]["total_time"]
-
+      init_process_info(process_info, pid)
       continue
 
     if found_root_process == False:
@@ -116,20 +116,7 @@ def get_process_info(root_process):
     ppid = process.info["ppid"]
     if ppid in process_info:
       process_info[pid] = process.info
-
-      # TODO refactor
-      process_info[pid]["child_pids"] = list()
-      process_info[pid]["sum_cpu"] = process_info[pid]["cpu_percent"]
-      process_info[pid]["sum_mem"] = process_info[pid]["memory_percent"]
-      process_info[pid]["sum_rss"] = process_info[pid]["memory_info"].rss
-      process_info[pid]["sum_ncp"] = 1
-      # pretty
-      if len(process_info[pid]["cmdline"]) == 0:
-        process_info[pid]["cmdline"] = [os.path.basename(process_info[pid]["exe"])]
-      else:
-        # full path of info["cmdline"][0] is in info["exe"]
-        process_info[pid]["cmdline"][0] = os.path.basename(process_info[pid]["cmdline"][0])
-
+      init_process_info(process_info, pid)
       process_info[ppid]["child_pids"].append(pid)
 
   return process_info
