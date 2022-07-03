@@ -144,6 +144,8 @@ def cumulate_process_info(process_info, parent_pid):
   process_info[parent_pid]["sum_ncp"] += process_info[parent_pid]["ncp"]
 
 
+todo_add_token_time = None
+
 def print_process_info(
     process_info,
     root_pid,
@@ -154,6 +156,8 @@ def print_process_info(
     check_load=True,
     print_jobserver_stats=True,
   ):
+
+  global todo_add_token_time
 
   # TODO rename root_pid to pid
   pid = root_pid
