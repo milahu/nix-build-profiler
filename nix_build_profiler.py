@@ -131,9 +131,7 @@ def cumulate_process_info(process_info, parent_pid):
     process_info[parent_pid]["sum_rss"] += process_info[child_pid]["sum_rss"]
     process_info[parent_pid]["sum_ncp"] += process_info[child_pid]["sum_ncp"]
     process_info[parent_pid]["sum_alltime_load"] += process_info[child_pid]["sum_alltime_load"]
-    #process_info[parent_pid]["sum_ncp"] += len(process_info[child_pid]["child_pids"])
   process_info[parent_pid]["ncp"] = len(process_info[parent_pid]["child_pids"])
-  process_info[parent_pid]["sum_ncp"] += process_info[parent_pid]["ncp"]
 
 
 todo_add_token_time = None
@@ -248,13 +246,6 @@ def print_process_info(
 
   #total_time = float(info['total_time']) / 60.0 # time in minutes
   total_time = info['total_time'] # time in seconds
-
-  # FIXME sum_ncp: off by one error
-  #  load  Load  rss  time spr cpr proc
-  #   1.1   0.1   17   0.2   5   2 bash 1: bash -e
-  #   1.0   0.9    9   0.1   1   0   xz 13: xz -d
-  #   0.1   0.1    2   0.1   1   0   tar 14: tar xf -
-  # bash: spr should be 3 not 5
 
   #print(f"{sum_cpu:{cpu_width}.1f} {sum_mem:3.0f} {Float(sum_rss):4.0h} {sum_ncp:3d} {ncp:3d} {depth*indent}{name}{info_str}", file=file)
   #print(f"{sum_cpu:{cpu_width}.1f} {sum_ncp:3d} {Float(sum_rss):4.0h} {ncp:3d} {depth*indent}{name}{info_str}", file=file)
