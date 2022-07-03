@@ -255,7 +255,7 @@ def print_process_info(
 
   #print(f"{sum_cpu:{cpu_width}.1f} {sum_mem:3.0f} {Float(sum_rss):4.0h} {sum_ncp:3d} {ncp:3d} {depth*indent}{name}{info_str}", file=file)
   #print(f"{sum_cpu:{cpu_width}.1f} {sum_ncp:3d} {Float(sum_rss):4.0h} {ncp:3d} {depth*indent}{name}{info_str}", file=file)
-  print(f"{sum_cpu:{cpu_width}.1f} {(sum_rss / mebi):4.0f} {sum_ncp:3d} {ncp:3d} {depth*indent}{name} {pid} {cmdline_str}{info_str}", file=file)
+  print(f"{sum_cpu:{cpu_width}.1f} {(sum_rss / mebi):4.0f} {sum_ncp:3d} {ncp:3d} {depth*indent}{name} {pid}: {cmdline_str}{info_str}", file=file)
 
   if config_print_env_vars:
     for k in info["environ"]:
@@ -365,7 +365,7 @@ def print_process_info(
             dt_add_token = 5 # add token every N seconds
             if todo_add_token_time == None:
               todo_add_token_time = time.time() + dt_add_token
-              print(f"adding new token in {dt_add_token} seconds")
+              print(f"adding new token in {dt_add_token:.2f} seconds")
             else:
               todo_wait = todo_add_token_time - time.time()
               if todo_wait < 0:
@@ -400,11 +400,11 @@ def main():
   root_process = find_root_process(config_root_process_name)
 
   max_load = int(os.environ.get("NIX_BUILD_CORES", "0"))
-  min_load = 0.8 * max_load # 80% of 32 cores = 25.6
+  min_load = 0.9 * max_load # 90% of 32 cores = 28.8
   total_cores = os.cpu_count()
   check_load = 0 < max_load and max_load < total_cores
   max_load_tolerance = 0.20 # 20%
-  min_load_tolerance = 0.20 # 20% # 25.6 -20% = 20.48
+  min_load_tolerance = 0
   tolerant_max_load = max_load * (1 + max_load_tolerance)
   tolerant_min_load = min_load * (1 - min_load_tolerance)
 
