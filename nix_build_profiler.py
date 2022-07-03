@@ -156,7 +156,7 @@ def print_process_info(
     #print(f"\n{'load':<{cpu_width}s} mem rss  vms  proc @ {t}", file=file)
     #print(f"\n{'load':<{cpu_width}s} mem rss  Ncp ncp  proc @ {t}", file=file)
     #print(f"\n{'load':<{cpu_width}s}  rss spr cpr proc @ {t}", file=file)
-    print(f"\n{'load':<{cpu_width}s} {'Load':<{cpu_width}s} rss  time spr cpr proc @ {t}", file=file)
+    print(f"\n{'load':{cpu_width}s} {'Load':{cpu_width}s}  rss  time spr cpr proc", file=file)
     #print(f"\n{'load':<{cpu_width}s} mem proc @ {t}", file=file)
     # spr = sum of all child processes, including self
     # cpr = number of first child processes, excluding transitive children
@@ -246,10 +246,17 @@ def print_process_info(
 
   total_time = float(info['total_time']) / 60.0 # time in minutes
 
+  # FIXME sum_ncp: off by one error
+  #  load  Load  rss  time spr cpr proc
+  #   1.1   0.1   17   0.2   5   2 bash 1: bash -e
+  #   1.0   0.9    9   0.1   1   0   xz 13: xz -d
+  #   0.1   0.1    2   0.1   1   0   tar 14: tar xf -
+  # bash: spr should be 3 not 5
+
   #print(f"{sum_cpu:{cpu_width}.1f} {sum_mem:3.0f} {Float(sum_rss):4.0h} {sum_ncp:3d} {ncp:3d} {depth*indent}{name}{info_str}", file=file)
   #print(f"{sum_cpu:{cpu_width}.1f} {sum_ncp:3d} {Float(sum_rss):4.0h} {ncp:3d} {depth*indent}{name}{info_str}", file=file)
   #print(f"{sum_cpu:{cpu_width}.1f} {(sum_rss / mebi):4.0f} {sum_ncp:3d} {ncp:3d} {depth*indent}{name} {pid}: {cmdline_str}{info_str}", file=file)
-  print(f"{sum_cpu:{cpu_width}.1f} {info['total_load']:{cpu_width}.1f} {(sum_rss / mebi):4.0f} {total_time:3.1f} {sum_ncp:3d} {ncp:3d} {depth*indent}{name} {pid}: {cmdline_str}{info_str}", file=file)
+  print(f"{sum_cpu:{cpu_width}.1f} {info['total_load']:{cpu_width}.1f} {(sum_rss / mebi):4.0f} {total_time:5.1f} {sum_ncp:3d} {ncp:3d} {depth*indent}{name} {pid}: {cmdline_str}{info_str}", file=file)
 
   if config_print_env_vars:
     for k in info["environ"]:
@@ -437,7 +444,8 @@ def main():
         load_status_str = "underload"
 
       # TODO print jobserver stats in the status_line
-      status_line = f"nix_build_profiler: load {total_load:.1f} = {load_status_str}. min {min_load} ({tolerant_min_load:.1f}) max {max_load} ({tolerant_max_load:.1f})"
+      t = time.strftime("%F %T %z")
+      status_line = f"nix_build_profiler: load {total_load:.1f} = {load_status_str} @ {t}. min {min_load} ({tolerant_min_load:.1f}) max {max_load} ({tolerant_max_load:.1f})"
 
       if is_overload or is_underload or check_load == False or force_print == True:
         print("\n" + status_line)
