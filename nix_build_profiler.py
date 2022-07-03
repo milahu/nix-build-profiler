@@ -359,13 +359,20 @@ def print_process_info(
           # the "idle" workers may generate cpu load in the future
           if free_tokens == 0 and is_underload:
             dt_add_token = 5 # add token every N seconds
-            if todo_add_token_since == None:
-              todo_add_token_since = time.time()
-            elif (time.time() - todo_add_token_since) > dt_add_token:
-              jobclient.release() # release default token 43
-              todo_add_token_since = None # done
+            if todo_add_token_time == None:
+              todo_add_token_time = time.time() + dt_add_token
+              print(f"adding new token in {dt_add_token} seconds")
+            else:
+              todo_wait = todo_add_token_time - time.time()
+              if todo_wait < 0:
+                print(f"adding new token")
+                jobclient.release() # release default token 43
+                todo_add_token_time = None # done
+              else:
+                print(f"adding new token in {todo_wait} seconds")
           else:
-            todo_add_token_since = None # clear the todo
+            print(f"adding new token stopped. free_tokens={free_tokens} is_underload={is_underload}")
+            todo_add_token_time = None # clear the todo
       if check_load and (is_overload == False and is_underload == False):
         # stop recursion -> short tree
         return
