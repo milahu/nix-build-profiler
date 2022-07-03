@@ -362,10 +362,10 @@ def print_process_info(
           # risk: overload
           # the "idle" workers may generate cpu load in the future
           if free_tokens == 0 and is_underload:
-            dt_add_token = 5 # add token every N seconds
+            dt_add_token = 30 # add token every N seconds
             if todo_add_token_time == None:
               todo_add_token_time = time.time() + dt_add_token
-              print(f"adding new token in {dt_add_token:.2f} seconds")
+              print(f"adding new token in {dt_add_token:.1f} seconds")
             else:
               todo_wait = todo_add_token_time - time.time()
               if todo_wait < 0:
@@ -373,7 +373,7 @@ def print_process_info(
                 jobclient.release(43) # release default token 43
                 todo_add_token_time = None # done
               else:
-                print(f"adding new token in {todo_wait} seconds")
+                print(f"adding new token in {todo_wait:.1f} seconds")
           elif todo_add_token_time != None:
             print(f"adding new token stopped. free_tokens={free_tokens} is_underload={is_underload}")
             todo_add_token_time = None # clear the todo
