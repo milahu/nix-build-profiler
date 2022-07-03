@@ -64,8 +64,9 @@ def find_root_process(name):
   return ls[0]
 
 
-ps_fields = ['pid', 'ppid', 'name', 'exe', 'cmdline', 'cwd', 'environ', 'status', 'cpu_times', 'cpu_percent', 'memory_percent', 'memory_info']
+ps_fields = ['pid', 'ppid', 'name', 'exe', 'cmdline', 'cwd', 'environ', 'status', 'cpu_times', 'cpu_percent', 'memory_percent', 'memory_info', 'create_time']
 # TODO num_threads?
+# NOTE create_time not on windows
 
 if config_print_env_vars:
   ps_fields.append('environ')
@@ -99,6 +100,8 @@ def get_process_info(root_process):
       else:
         # full path of info["cmdline"][0] is in info["exe"]
         process_info[pid]["cmdline"][0] = os.path.basename(process_info[pid]["cmdline"][0])
+      process_info[pid]["total_time"] = time.time() - process_info[pid]["create_time"]
+      process_info[pid]["total_load"] = (process_info[pid]["cpu_times"].user + process_info[pid]["cpu_times"].system) / process_info[pid]["total_time"]
 
       continue
 
@@ -165,7 +168,8 @@ def print_process_info(
   if depth == 0:
     #print(f"\n{'load':<{cpu_width}s} mem rss  vms  proc @ {t}", file=file)
     #print(f"\n{'load':<{cpu_width}s} mem rss  Ncp ncp  proc @ {t}", file=file)
-    print(f"\n{'load':<{cpu_width}s}  rss spr cpr proc @ {t}", file=file)
+    #print(f"\n{'load':<{cpu_width}s}  rss spr cpr proc @ {t}", file=file)
+    print(f"\n{'load':<{cpu_width}s}  {'load1':<{cpu_width}s} rss tim spr cpr proc @ {t}", file=file)
     #print(f"\n{'load':<{cpu_width}s} mem proc @ {t}", file=file)
     # spr = sum of all child processes, including self
     # cpr = number of first child processes, excluding transitive children
@@ -253,9 +257,12 @@ def print_process_info(
     name = exe
   name = os.path.basename(name)
 
+  total_time = info['total_time'] / 60.0 # time in minutes
+
   #print(f"{sum_cpu:{cpu_width}.1f} {sum_mem:3.0f} {Float(sum_rss):4.0h} {sum_ncp:3d} {ncp:3d} {depth*indent}{name}{info_str}", file=file)
   #print(f"{sum_cpu:{cpu_width}.1f} {sum_ncp:3d} {Float(sum_rss):4.0h} {ncp:3d} {depth*indent}{name}{info_str}", file=file)
-  print(f"{sum_cpu:{cpu_width}.1f} {(sum_rss / mebi):4.0f} {sum_ncp:3d} {ncp:3d} {depth*indent}{name} {pid}: {cmdline_str}{info_str}", file=file)
+  #print(f"{sum_cpu:{cpu_width}.1f} {(sum_rss / mebi):4.0f} {sum_ncp:3d} {ncp:3d} {depth*indent}{name} {pid}: {cmdline_str}{info_str}", file=file)
+  print(f"{info['total_load']:{cpu_width}.1f} {sum_cpu:{cpu_width}.1f} {total_time:3.0f} {(sum_rss / mebi):4.0f} {sum_ncp:3d} {ncp:3d} {depth*indent}{name} {pid}: {cmdline_str}{info_str}", file=file)
 
   if config_print_env_vars:
     for k in info["environ"]:
