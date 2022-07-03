@@ -217,12 +217,14 @@ def print_process_info(
     parent_cwd = process_info[info["ppid"]]["cwd"]
     if cwd != parent_cwd:
       log_info["cwd"] = cwd
+  #log_info["pid"] = pid
   log_info["exe"] = exe
   #if depth == 0:
   #  log_info["environ"] = environ # spammy
   info_str = ""
+  cmdline_str = ""
   if len(cmdline) > 0 and cmdline[0] in {"g++", "gcc"}:
-    name = shlex.join(cmdline)
+    cmdline_str = shlex.join(cmdline) # TODO rename name to cmdline_str
     #del log_info["cmdline"]
     #print(f"{sum_cpu:{cpu_width}.1f} {sum_mem:3.0f} {Float(sum_rss):4.0h} {depth*indent}{name} info={repr(log_info)}", file=file)
     # g++ has always 2 child procs: cc1plus, as
@@ -233,18 +235,23 @@ def print_process_info(
       pass
     else:
       # root process of stress-ng
-      name = shlex.join(cmdline)
+      cmdline_str = shlex.join(cmdline) # TODO rename name to cmdline_str
   else:
-    name = shlex.join(cmdline) # print cmdline for all commands
+    cmdline_str = shlex.join(cmdline) # print cmdline for all commands
     # FIXME rename name to cmdline_str
     if log_info:
       info_str = f" # {repr(log_info)}"
 
   mebi = 1024 * 1024
 
+  # TODO fix name?
+  if not name:
+    name = exe
+  name = os.path.basename(name)
+
   #print(f"{sum_cpu:{cpu_width}.1f} {sum_mem:3.0f} {Float(sum_rss):4.0h} {sum_ncp:3d} {ncp:3d} {depth*indent}{name}{info_str}", file=file)
   #print(f"{sum_cpu:{cpu_width}.1f} {sum_ncp:3d} {Float(sum_rss):4.0h} {ncp:3d} {depth*indent}{name}{info_str}", file=file)
-  print(f"{sum_cpu:{cpu_width}.1f} {(sum_rss / mebi):4.0f} {sum_ncp:3d} {ncp:3d} {depth*indent}{name}{info_str}", file=file)
+  print(f"{sum_cpu:{cpu_width}.1f} {(sum_rss / mebi):4.0f} {sum_ncp:3d} {ncp:3d} {depth*indent}{name} {pid} {cmdline_str}{info_str}", file=file)
 
   if config_print_env_vars:
     for k in info["environ"]:
@@ -315,6 +322,7 @@ def print_process_info(
       except FileNotFoundError:
         pass
       if fds_str and '3' in fds_str and '4' in fds_str: # default fds: 3, 4
+        num_tokens = None
         named_pipes = [
           f"/proc/{pid}/fd/3",
           f"/proc/{pid}/fd/4",
@@ -329,6 +337,7 @@ def print_process_info(
         except gnumake_tokenpool.NoJobServer:
           pass
         if jobclient:
+          free_tokens = None
           # acquire all tokens
           tokens = []
           while True:
@@ -337,12 +346,26 @@ def print_process_info(
               break
             tokens.append(token)
           #print(f"ninja jobserver: free tokens: {len(tokens)}", file=file)
-          if len(tokens) > 0:
+          free_tokens = len(tokens)
+          if free_tokens > 0:
             print(f"ninja jobserver: free tokens: {len(tokens)}", file=file)
           # TODO prettier ... with load ok, print only jobserver stats,
           # nothing of the process tree (except force_print==True or check_load==False)
           for token in tokens:
             jobclient.release(token)
+          # workaround for bad jobclients who run idle and dont release their tokens
+          # dont play a "zero sum game" but add new tokens to the game
+          # risk: overload
+          # the "idle" workers may generate cpu load in the future
+          if free_tokens == 0 and is_underload:
+            dt_add_token = 5 # add token every N seconds
+            if todo_add_token_since == None:
+              todo_add_token_since = time.time()
+            elif (time.time() - todo_add_token_since) > dt_add_token:
+              jobclient.release() # release default token 43
+              todo_add_token_since = None # done
+          else:
+            todo_add_token_since = None # clear the todo
       if check_load and (is_overload == False and is_underload == False):
         # stop recursion -> short tree
         return
