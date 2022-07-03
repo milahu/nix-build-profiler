@@ -366,6 +366,17 @@ def print_process_info(
               if todo_wait < 0:
                 print(f"adding new token now")
                 jobclient.release(43) # release default token 43
+                # what worker was unblocked by the new token?
+                # tight loop:
+                # new processes: max age 0.1 seconds
+                for loop_id in range(100): # TODO better
+                  min_create_time = time.time() - 0.1
+                  print(f"looping for new procs at {time.time()} loop_id={loop_id}")
+                  for p in psutil.process_iter(['name', 'cmdline', 'pid', 'ppid', 'create_time']):
+                    if p.info['create_time'] < min_create_time:
+                      continue
+                    print(f"new token. new process: {p.info}")
+
                 todo_add_token_time = None # done
               else:
                 print(f"adding new token in {todo_wait:.0f} seconds")
