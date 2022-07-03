@@ -369,12 +369,12 @@ def print_process_info(
             else:
               todo_wait = todo_add_token_time - time.time()
               if todo_wait < 0:
-                print(f"adding new token")
-                jobclient.release() # release default token 43
+                print(f"adding new token now")
+                jobclient.release(43) # release default token 43
                 todo_add_token_time = None # done
               else:
                 print(f"adding new token in {todo_wait} seconds")
-          else:
+          elif todo_add_token_time != None:
             print(f"adding new token stopped. free_tokens={free_tokens} is_underload={is_underload}")
             todo_add_token_time = None # clear the todo
       if check_load and (is_overload == False and is_underload == False):
