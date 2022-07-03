@@ -86,7 +86,8 @@ def init_process_info(process_info, pid):
     # full path of info["cmdline"][0] is in info["exe"]
     process_info[pid]["cmdline"][0] = os.path.basename(process_info[pid]["cmdline"][0])
   process_info[pid]["total_time"] = time.time() - process_info[pid]["create_time"]
-  process_info[pid]["total_load"] = (process_info[pid]["cpu_times"].user + process_info[pid]["cpu_times"].system) / process_info[pid]["total_time"]
+  process_info[pid]["alltime_load"] = (process_info[pid]["cpu_times"].user + process_info[pid]["cpu_times"].system) / process_info[pid]["total_time"]
+  process_info[pid]["sum_alltime_load"] = process_info[pid]["alltime_load"]
 
 def get_process_info(root_process):
 
@@ -129,6 +130,7 @@ def cumulate_process_info(process_info, parent_pid):
     process_info[parent_pid]["sum_mem"] += process_info[child_pid]["sum_mem"]
     process_info[parent_pid]["sum_rss"] += process_info[child_pid]["sum_rss"]
     process_info[parent_pid]["sum_ncp"] += process_info[child_pid]["sum_ncp"]
+    process_info[parent_pid]["sum_alltime_load"] += process_info[child_pid]["sum_alltime_load"]
     #process_info[parent_pid]["sum_ncp"] += len(process_info[child_pid]["child_pids"])
   process_info[parent_pid]["ncp"] = len(process_info[parent_pid]["child_pids"])
   process_info[parent_pid]["sum_ncp"] += process_info[parent_pid]["ncp"]
@@ -156,7 +158,7 @@ def print_process_info(
     #print(f"\n{'load':<{cpu_width}s} mem rss  vms  proc @ {t}", file=file)
     #print(f"\n{'load':<{cpu_width}s} mem rss  Ncp ncp  proc @ {t}", file=file)
     #print(f"\n{'load':<{cpu_width}s}  rss spr cpr proc @ {t}", file=file)
-    print(f"\n{'load':{cpu_width}s} {'Load':{cpu_width}s}  rss  time spr cpr proc", file=file)
+    print(f"\n{'load':>{cpu_width}s} {'Load':>{cpu_width}s}  rss  time spr cpr proc", file=file)
     #print(f"\n{'load':<{cpu_width}s} mem proc @ {t}", file=file)
     # spr = sum of all child processes, including self
     # cpr = number of first child processes, excluding transitive children
@@ -244,7 +246,8 @@ def print_process_info(
     name = exe
   name = os.path.basename(name)
 
-  total_time = float(info['total_time']) / 60.0 # time in minutes
+  #total_time = float(info['total_time']) / 60.0 # time in minutes
+  total_time = info['total_time'] # time in seconds
 
   # FIXME sum_ncp: off by one error
   #  load  Load  rss  time spr cpr proc
@@ -256,7 +259,7 @@ def print_process_info(
   #print(f"{sum_cpu:{cpu_width}.1f} {sum_mem:3.0f} {Float(sum_rss):4.0h} {sum_ncp:3d} {ncp:3d} {depth*indent}{name}{info_str}", file=file)
   #print(f"{sum_cpu:{cpu_width}.1f} {sum_ncp:3d} {Float(sum_rss):4.0h} {ncp:3d} {depth*indent}{name}{info_str}", file=file)
   #print(f"{sum_cpu:{cpu_width}.1f} {(sum_rss / mebi):4.0f} {sum_ncp:3d} {ncp:3d} {depth*indent}{name} {pid}: {cmdline_str}{info_str}", file=file)
-  print(f"{sum_cpu:{cpu_width}.1f} {info['total_load']:{cpu_width}.1f} {(sum_rss / mebi):4.0f} {total_time:5.1f} {sum_ncp:3d} {ncp:3d} {depth*indent}{name} {pid}: {cmdline_str}{info_str}", file=file)
+  print(f"{sum_cpu:{cpu_width}.1f} {info['sum_alltime_load']:{cpu_width}.1f} {(sum_rss / mebi):4.0f} {total_time:5.0f} {sum_ncp:3d} {ncp:3d} {depth*indent}{name} {pid}: {cmdline_str}{info_str}", file=file)
 
   if config_print_env_vars:
     for k in info["environ"]:
@@ -366,7 +369,7 @@ def print_process_info(
             dt_add_token = 30 # add token every N seconds
             if todo_add_token_time == None:
               todo_add_token_time = time.time() + dt_add_token
-              print(f"adding new token in {dt_add_token:.1f} seconds")
+              print(f"adding new token in {dt_add_token:.0f} seconds")
             else:
               todo_wait = todo_add_token_time - time.time()
               if todo_wait < 0:
@@ -374,7 +377,7 @@ def print_process_info(
                 jobclient.release(43) # release default token 43
                 todo_add_token_time = None # done
               else:
-                print(f"adding new token in {todo_wait:.1f} seconds")
+                print(f"adding new token in {todo_wait:.0f} seconds")
           elif todo_add_token_time != None:
             print(f"adding new token stopped. free_tokens={free_tokens} is_underload={is_underload}")
             todo_add_token_time = None # clear the todo
