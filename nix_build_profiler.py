@@ -159,7 +159,7 @@ def print_process_info(
     #print(f"\n{'load':<{cpu_width}s} mem rss  Ncp ncp  proc @ {t}", file=file)
     #print(f"\n{'load':<{cpu_width}s}  rss spr cpr proc @ {t}", file=file)
     #print(f"\n{'load':>{cpu_width}s} {'Load':>{cpu_width}s}  rss  time spr cpr proc", file=file)
-    print(f"\n{'load':>{cpu_width}s} {'Load':>{cpu_width}s}  rss  sfd time spr cpr proc", file=file)
+    print(f"\n{'load':>{cpu_width}s} {'Load':>{cpu_width}s}  rss sfd  time spr cpr proc", file=file)
     #print(f"\n{'load':<{cpu_width}s} mem proc @ {t}", file=file)
     # spr = sum of all child processes, including self
     # cpr = number of first child processes, excluding transitive children
