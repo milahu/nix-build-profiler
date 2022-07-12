@@ -88,7 +88,7 @@ def init_process_info(process_info, pid):
   process_info[pid]["total_time"] = time.time() - process_info[pid]["create_time"]
   process_info[pid]["alltime_load"] = (process_info[pid]["cpu_times"].user + process_info[pid]["cpu_times"].system) / process_info[pid]["total_time"]
   process_info[pid]["sum_alltime_load"] = process_info[pid]["alltime_load"]
-  process_info[pid]["sum_fds"] = process_info[pid]["num_fds"]
+  process_info[pid]["sum_fds"] = process_info[pid]["num_fds"] or 0
 
 def get_process_info(root_process):
 
@@ -132,7 +132,7 @@ def cumulate_process_info(process_info, parent_pid):
     process_info[parent_pid]["sum_rss"] += process_info[child_pid]["sum_rss"]
     process_info[parent_pid]["sum_ncp"] += process_info[child_pid]["sum_ncp"]
     process_info[parent_pid]["sum_alltime_load"] += process_info[child_pid]["sum_alltime_load"]
-    process_info[parent_pid]["sum_fds"] += process_info[child_pid]["sum_fds"]
+    process_info[parent_pid]["sum_fds"] += process_info[child_pid]["sum_fds"] or 0
   process_info[parent_pid]["ncp"] = len(process_info[parent_pid]["child_pids"])
 
 
