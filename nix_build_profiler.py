@@ -159,7 +159,7 @@ def print_process_info(
     #print(f"\n{'load':<{cpu_width}s} mem rss  Ncp ncp  proc @ {t}", file=file)
     #print(f"\n{'load':<{cpu_width}s}  rss spr cpr proc @ {t}", file=file)
     #print(f"\n{'load':>{cpu_width}s} {'Load':>{cpu_width}s}  rss  time spr cpr proc", file=file)
-    print(f"\n{'load':>{cpu_width}s} {'Load':>{cpu_width}s}  rss sfd  time spr cpr proc", file=file)
+    print(f"\n{'load':>{cpu_width}s} {'Load':>{cpu_width}s}  rss  sfd  time spr cpr proc", file=file)
     #print(f"\n{'load':<{cpu_width}s} mem proc @ {t}", file=file)
     # spr = sum of all child processes, including self
     # cpr = number of first child processes, excluding transitive children
@@ -254,7 +254,7 @@ def print_process_info(
   #print(f"{sum_cpu:{cpu_width}.1f} {sum_mem:3.0f} {Float(sum_rss):4.0h} {sum_ncp:3d} {ncp:3d} {depth*indent}{name}{info_str}", file=file)
   #print(f"{sum_cpu:{cpu_width}.1f} {sum_ncp:3d} {Float(sum_rss):4.0h} {ncp:3d} {depth*indent}{name}{info_str}", file=file)
   #print(f"{sum_cpu:{cpu_width}.1f} {(sum_rss / mebi):4.0f} {sum_ncp:3d} {ncp:3d} {depth*indent}{name} {pid}: {cmdline_str}{info_str}", file=file)
-  print(f"{sum_cpu:{cpu_width}.1f} {info['sum_alltime_load']:{cpu_width}.1f} {(sum_rss / mebi):4.0f} {sum_fds:3d} {total_time:5.0f} {sum_ncp:3d} {ncp:3d} {depth*indent}{name} {pid}: {cmdline_str}{info_str}", file=file)
+  print(f"{sum_cpu:{cpu_width}.1f} {info['sum_alltime_load']:{cpu_width}.1f} {(sum_rss / mebi):4.0f} {sum_fds:4d} {total_time:5.0f} {sum_ncp:3d} {ncp:3d} {depth*indent}{name} {pid}: {cmdline_str}{info_str}", file=file)
 
   if config_print_env_vars:
     for k in info["environ"]:
