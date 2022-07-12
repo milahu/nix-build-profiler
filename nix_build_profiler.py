@@ -64,7 +64,7 @@ def find_root_process(name):
   return ls[0]
 
 
-ps_fields = ['pid', 'ppid', 'name', 'exe', 'cmdline', 'cwd', 'environ', 'status', 'cpu_times', 'cpu_percent', 'memory_percent', 'memory_info', 'create_time']
+ps_fields = ['pid', 'ppid', 'name', 'exe', 'cmdline', 'cwd', 'environ', 'status', 'cpu_times', 'cpu_percent', 'memory_percent', 'memory_info', 'create_time', 'num_fds']
 # TODO num_threads?
 # NOTE create_time not on windows
 
@@ -88,6 +88,7 @@ def init_process_info(process_info, pid):
   process_info[pid]["total_time"] = time.time() - process_info[pid]["create_time"]
   process_info[pid]["alltime_load"] = (process_info[pid]["cpu_times"].user + process_info[pid]["cpu_times"].system) / process_info[pid]["total_time"]
   process_info[pid]["sum_alltime_load"] = process_info[pid]["alltime_load"]
+  process_info[pid]["sum_fds"] = process_info[pid]["num_fds"]
 
 def get_process_info(root_process):
 
@@ -131,6 +132,7 @@ def cumulate_process_info(process_info, parent_pid):
     process_info[parent_pid]["sum_rss"] += process_info[child_pid]["sum_rss"]
     process_info[parent_pid]["sum_ncp"] += process_info[child_pid]["sum_ncp"]
     process_info[parent_pid]["sum_alltime_load"] += process_info[child_pid]["sum_alltime_load"]
+    process_info[parent_pid]["sum_fds"] += process_info[child_pid]["sum_fds"]
   process_info[parent_pid]["ncp"] = len(process_info[parent_pid]["child_pids"])
 
 
@@ -156,7 +158,8 @@ def print_process_info(
     #print(f"\n{'load':<{cpu_width}s} mem rss  vms  proc @ {t}", file=file)
     #print(f"\n{'load':<{cpu_width}s} mem rss  Ncp ncp  proc @ {t}", file=file)
     #print(f"\n{'load':<{cpu_width}s}  rss spr cpr proc @ {t}", file=file)
-    print(f"\n{'load':>{cpu_width}s} {'Load':>{cpu_width}s}  rss  time spr cpr proc", file=file)
+    #print(f"\n{'load':>{cpu_width}s} {'Load':>{cpu_width}s}  rss  time spr cpr proc", file=file)
+    print(f"\n{'load':>{cpu_width}s} {'Load':>{cpu_width}s}  rss  sfd time spr cpr proc", file=file)
     #print(f"\n{'load':<{cpu_width}s} mem proc @ {t}", file=file)
     # spr = sum of all child processes, including self
     # cpr = number of first child processes, excluding transitive children
@@ -167,6 +170,7 @@ def print_process_info(
   sum_mem = info["sum_mem"]
   sum_rss = info["sum_rss"]
   sum_ncp = info["sum_ncp"]
+  sum_fds = info["sum_fds"]
   ncp = info["ncp"]
   name = info["name"]
   cmdline = info["cmdline"]
@@ -250,7 +254,7 @@ def print_process_info(
   #print(f"{sum_cpu:{cpu_width}.1f} {sum_mem:3.0f} {Float(sum_rss):4.0h} {sum_ncp:3d} {ncp:3d} {depth*indent}{name}{info_str}", file=file)
   #print(f"{sum_cpu:{cpu_width}.1f} {sum_ncp:3d} {Float(sum_rss):4.0h} {ncp:3d} {depth*indent}{name}{info_str}", file=file)
   #print(f"{sum_cpu:{cpu_width}.1f} {(sum_rss / mebi):4.0f} {sum_ncp:3d} {ncp:3d} {depth*indent}{name} {pid}: {cmdline_str}{info_str}", file=file)
-  print(f"{sum_cpu:{cpu_width}.1f} {info['sum_alltime_load']:{cpu_width}.1f} {(sum_rss / mebi):4.0f} {total_time:5.0f} {sum_ncp:3d} {ncp:3d} {depth*indent}{name} {pid}: {cmdline_str}{info_str}", file=file)
+  print(f"{sum_cpu:{cpu_width}.1f} {info['sum_alltime_load']:{cpu_width}.1f} {(sum_rss / mebi):4.0f} {sum_fds:3d} {total_time:5.0f} {sum_ncp:3d} {ncp:3d} {depth*indent}{name} {pid}: {cmdline_str}{info_str}", file=file)
 
   if config_print_env_vars:
     for k in info["environ"]:
